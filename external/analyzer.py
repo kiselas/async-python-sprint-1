@@ -4,7 +4,7 @@ import logging
 from dataclasses import dataclass, field
 from functools import reduce
 from operator import getitem
-from typing import Optional, List, Dict
+from typing import Dict, List, Optional
 
 PATH_FROM_INPUT = "./../examples/response.json"
 PATH_TO_OUTPUT = "./../examples/output.json"
@@ -42,7 +42,7 @@ INPUT_DAY_SUITABLE_CONDITIONS = [
 
 OUTPUT_RAW_DATA_KEY = "raw_data"
 OUTPUT_DAYS_KEY = "days"
-DEFAULT_OUTPUT_RESULT = {
+DEFAULT_OUTPUT_RESULT: Dict[str, list] = {
     OUTPUT_DAYS_KEY: [],
     # OUTPUT_RAW_DATA_KEY: None,
 }
@@ -89,7 +89,7 @@ def parse_args():
 
 @dataclass
 class HourInfo:
-    raw_data: Dict[str, tuple[str, int]] = field(repr=False)
+    raw_data: Dict = field(repr=False)
     condition: Optional[str] = field(init=False, default=None)
     temperature: Optional[int] = field(init=False, default=None)
     hour: Optional[int] = field(init=False, default=None)
@@ -97,7 +97,8 @@ class HourInfo:
     @staticmethod
     def is_hour_suitable(data):
         hour = int(data[INPUT_HOUR_PATH])
-        return (hour >= INPUT_DAY_HOURS_START) and (hour <= INPUT_DAY_HOURS_END)
+        return (hour >= INPUT_DAY_HOURS_START) and \
+               (hour <= INPUT_DAY_HOURS_END)
 
     @property
     def is_cond_suitable(self):
@@ -117,7 +118,7 @@ class HourInfo:
 
 @dataclass
 class DayInfo:
-    raw_data: Dict[str, tuple[str, int]] = field(repr=False)
+    raw_data: Dict[str, Dict[str, int]] = field(repr=False)
     hours: Optional[List[HourInfo]] = field(init=False, repr=False, default=None)
 
     date: Optional[str] = field(init=False, default=None)
@@ -182,7 +183,6 @@ def analyze_json(data):
 
     # analyzing days
     time_start = None
-    time_end = None
 
     days_data = deep_getitem(data, INPUT_FORECAST_PATH)
     days = []
@@ -192,7 +192,6 @@ def analyze_json(data):
         d_date = d_info.date
 
         time_start = time_start or d_date
-        time_end = d_date
 
         days.append(d_info.to_json())
 

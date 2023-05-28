@@ -13,7 +13,7 @@ class YandexWeatherAPI:
     """
     Base class for requests
     """
-
+    @staticmethod
     def __do_req(url: str) -> str:
         """Base request method"""
         try:
@@ -23,8 +23,8 @@ class YandexWeatherAPI:
             if response.status != HTTPStatus.OK:
                 raise Exception(
                     "Error during execute request. {}: {}".format(
-                        resp_body.status, resp_body.reason
-                    )
+                        resp_body.status, resp_body.reason,
+                    ),
                 )
             return data
         except Exception as ex:
