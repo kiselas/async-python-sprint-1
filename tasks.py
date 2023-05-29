@@ -1,7 +1,8 @@
 import csv
 import json
-import logging
+import logger
 import multiprocessing
+from logger import logger
 from collections import defaultdict
 from statistics import mean
 from typing import Any, Dict, List, Union
@@ -12,19 +13,10 @@ from constants import (
     PATH_TO_OUTPUTS,
     PATH_TO_RESPONSES,
 )
-from exceptions import CreateCSVHeadersError
+from exceptions import CreateCSVHeadersError, RequestAPIError, JSONDecodeError
 from external.analyzer import analyze_json, dump_data, load_data
 from external.client import YandexWeatherAPI
 from utils import get_url_by_city_name
-
-TIME_STARTS_WITH = 9
-TIME_ENDS_WITH = 19
-AVG_FOR_DAYS = 5
-
-logs_format = "%(asctime)s: %(message)s"
-logging.basicConfig(format=logs_format, level=logging.DEBUG, datefmt="%H:%M:%S")
-
-good_weather_types = ["clear", "partly-cloudy", "cloudy"]
 
 
 class DataFetchingTask:
@@ -40,9 +32,11 @@ class DataFetchingTask:
 
         try:
             weather_data = YandexWeatherAPI.get_forecasting(url)
-        except Exception:
-            logging.error(f"Something went wrong"
-                          f" with request for city {self.city}")
+        except JSONDecodeError:
+            logger.exception(f"Json decode error for request {self.city}", exc_info=True)
+            return {}
+        except RequestAPIError:
+            logger.exception(f"Something went wrong with request for city {self.city}", exc_info=True)
             return {}
 
         return weather_data
@@ -90,8 +84,8 @@ class DataAggregationTask:
         with open(f"{PATH_TO_OUTPUTS}{self.city}.json") as city_data_file:
             days_data = json.load(city_data_file).get("days", [])
 
-        logging.info(f"Start write aggregated data "
-                     f"for city {self.city} to csv")
+        logger.info(f"Start write aggregated data "
+                    f"for city {self.city} to csv")
         with open(OUTPUT_CSV_FILE, "a", newline="") as csv_file:
             try:
                 writer = csv.DictWriter(csv_file, self.fieldnames)
@@ -128,19 +122,19 @@ class DataAggregationTask:
                 precipitations_row["Рейтинг"] = ""
 
                 writer.writerow(precipitations_row)
+            except csv.Error as e:
+                logger.exception(e, exc_info=True)
+            except IOError as e:
+                logger.exception(e, exc_info=True)
+            finally:
                 self.lock.release()
-            except Exception as e:
-                logging.exception(e, exc_info=True)
-                if self.lock.locked():
-                    self.lock.release()
 
     @staticmethod
     def aggregate_city_avg_tmp(
             days_data: List[Dict[str, Any]],
     ) -> Union[int, float]:
         """Получаем среднюю температуру за все дни"""
-        tmp_list: List[float] = \
-            [value["temp_avg"] for value in days_data if value.get("temp_avg")]
+        tmp_list: List[float] = [value["temp_avg"] for value in days_data if value.get("temp_avg")]
         avg_tmp = round(mean(tmp_list), 1) if tmp_list else 0
         return avg_tmp
 
@@ -163,26 +157,26 @@ class DataAggregationTask:
             path_to_city_data: str = f"{PATH_TO_OUTPUTS}{city}.json"
             with open(path_to_city_data) as file:
                 city_data: Dict[str, Any] = json.load(file)
+
                 if not city_data.get("days"):
                     continue
-                dates: List[str] = [day_data["date"]
-                                    for day_data in city_data["days"]]
+
+                dates: List[str] = [day_data["date"] for day_data in city_data["days"]]
+
                 if len(dates) == MAX_DATE_FIELDS:
                     all_dates = dates
                     break
+
         if not all_dates:
             raise CreateCSVHeadersError("Can't find all dates for CSV headers")
 
-        fieldnames: List[str] = \
-            ["Город/день", "Температура и осадки"] + \
-            all_dates + \
-            ["Среднее", "Рейтинг"]
+        fieldnames: List[str] = ["Город/день", "Температура и осадки"] + all_dates + ["Среднее", "Рейтинг"]
         with open(OUTPUT_CSV_FILE, "w", newline="") as file:
             writer = csv.DictWriter(file, fieldnames=fieldnames)
-
             # Запись заголовков в CSV файл
             writer.writeheader()
-        logging.info("CSV file with headers successfully created")
+
+        logger.info("CSV file with headers successfully created")
         return fieldnames
 
 
@@ -212,10 +206,9 @@ class DataAnalyzingTask:
             data_for_rating[city] = {"avg_tmp": avg_tmp,
                                      "avg_good_weather": avg_good_weather}
 
-        sorted_data = \
-            sorted(data_for_rating.items(),
-                   key=lambda x: x[1]["avg_tmp"] + x[1]["avg_good_weather"],
-                   reverse=True)
+        sorted_data = sorted(data_for_rating.items(),
+                             key=lambda x: x[1]["avg_tmp"] + x[1]["avg_good_weather"],
+                             reverse=True)
         city_rating = {}
         for num, city_data in enumerate(sorted_data, start=1):
             city_rating[city_data[0]] = num

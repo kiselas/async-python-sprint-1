@@ -6,46 +6,9 @@ from functools import reduce
 from operator import getitem
 from typing import Dict, List, Optional
 
-PATH_FROM_INPUT = "./../examples/response.json"
-PATH_TO_OUTPUT = "./../examples/output.json"
-
-INPUT_FORECAST_PATH = "forecasts"
-INPUT_DATE_PATH = "date"
-
-INPUT_HOURS_PATH = "hours"
-INPUT_HOUR_PATH = "hour"
-INPUT_TEMPERATURE_PATH = "temp"
-INPUT_CONDITION_PATH = "condition"
-INPUT_DAY_HOURS_START = 9
-INPUT_DAY_HOURS_END = 19
-INPUT_DAY_SUITABLE_CONDITIONS = [
-    "clear",
-    "partly-cloudy",
-    "cloudy",
-    "overcast",
-    # "drizzle",
-    # "light-rain",
-    # "rain",
-    # "moderate-rain",
-    # "heavy-rain",
-    # "continuous-heavy-rain",
-    # "showers",
-    # "wet-snow",
-    # "light-snow",
-    # "snow",
-    # "snow-showers",
-    # "hail",
-    # "thunderstorm",
-    # "thunderstorm-with-rain",
-    # "thunderstorm-with-hail"
-]
-
-OUTPUT_RAW_DATA_KEY = "raw_data"
-OUTPUT_DAYS_KEY = "days"
-DEFAULT_OUTPUT_RESULT: Dict[str, list] = {
-    OUTPUT_DAYS_KEY: [],
-    # OUTPUT_RAW_DATA_KEY: None,
-}
+from constants import PATH_FROM_INPUT, PATH_TO_OUTPUT, INPUT_HOUR_PATH, INPUT_DAY_HOURS_START, INPUT_DAY_HOURS_END, \
+    INPUT_DAY_SUITABLE_CONDITIONS, INPUT_TEMPERATURE_PATH, INPUT_CONDITION_PATH, INPUT_DATE_PATH, INPUT_HOURS_PATH, \
+    INPUT_FORECAST_PATH, DEFAULT_OUTPUT_RESULT, OUTPUT_DAYS_KEY
 
 
 def deep_getitem(obj, path: str):

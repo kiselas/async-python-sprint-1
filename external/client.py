@@ -1,12 +1,11 @@
 import json
-import logging
+from logger import logger
 from http import HTTPStatus
 from urllib.request import urlopen
 
+from exceptions import RequestAPIError, JSONDecodeError
+
 ERR_MESSAGE_TEMPLATE = "Unexpected error: {error}"
-
-
-logger = logging.getLogger()
 
 
 class YandexWeatherAPI:
@@ -21,15 +20,16 @@ class YandexWeatherAPI:
                 resp_body = response.read().decode("utf-8")
                 data = json.loads(resp_body)
             if response.status != HTTPStatus.OK:
-                raise Exception(
+                raise RequestAPIError(
                     "Error during execute request. {}: {}".format(
                         resp_body.status, resp_body.reason,
                     ),
                 )
             return data
-        except Exception as ex:
-            logger.error(ex)
-            raise Exception(ERR_MESSAGE_TEMPLATE.format(error=ex))
+        except json.JSONDecodeError as ex:
+            raise JSONDecodeError(ERR_MESSAGE_TEMPLATE.format(error=ex))
+        except RequestAPIError as ex:
+            raise RequestAPIError(ERR_MESSAGE_TEMPLATE.format(error=ex))
 
     @staticmethod
     def get_forecasting(url: str):
