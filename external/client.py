@@ -1,5 +1,4 @@
 import json
-from logger import logger
 from http import HTTPStatus
 from urllib.request import urlopen
 
